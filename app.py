@@ -40,7 +40,7 @@ def load_stock_data(tickers, start_date, end_date):
     return data, daily_returns
 
 # Load market data (S&P 500)
-market_data = yf.download('^GSPC', start='2018-01-01', end='2023-01-01')['Adj Close'].pct_change().dropna()
+market_data = yf.download('^GSPC', start='2018-07-12', end='2024-07-12')['Adj Close'].pct_change().dropna()
 market_returns = market_data
 
 # Function to calculate historical portfolio returns
@@ -92,7 +92,7 @@ app.layout = html.Div(children=[
 def update_graphs(selected_stocks, risk_free_rate):
     # Load stock data
     tickers = selected_stocks.split()
-    stock_data, daily_returns = load_stock_data(tickers, '2018-01-01', '2023-01-01')
+    stock_data, daily_returns = load_stock_data(tickers, '2018-07-12', '2024-07-12')
 
     # Generate random portfolios
     num_portfolios = 10000
