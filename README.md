@@ -11,7 +11,7 @@ This project demonstrates portfolio optimization using Modern Portfolio Theory (
 - Interactive dashboard to visualize the efficient frontier, cumulative returns, and portfolio weights
 
 ## Dashboard
-Click [here](portfoliooptimization-production.up.railway.app) to go the dasboard.
+Click [here](https://portfoliooptimization-production.up.railway.app) to go to the dasboard.
 
 ## Installation
 
