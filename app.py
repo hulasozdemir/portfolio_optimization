@@ -1,11 +1,13 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_table
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from datetime import datetime as dt
 
 # Function to calculate portfolio return and volatility
 def portfolio_performance(weights, returns):
@@ -55,14 +57,67 @@ app = dash.Dash(__name__)
 app.layout = html.Div(children=[
     html.H1(children='Portfolio Optimization Dashboard'),
 
+    dcc.DatePickerRange(
+        id='date-picker-range',
+        start_date=dt(2018, 7, 12),
+        end_date=dt(2024, 7, 12),
+        display_format='YYYY-MM-DD'
+    ),
+
     dcc.Dropdown(
         id='stock-dropdown',
         options=[
-            {'label': 'Tech Stocks', 'value': 'AAPL MSFT GOOGL AMZN META'},
-            {'label': 'Finance Stocks', 'value': 'JPM BAC GS MS'},
-            {'label': 'Healthcare Stocks', 'value': 'JNJ PFE MRK ABBV'}
-        ],
-        value='AAPL MSFT GOOGL AMZN META'
+        {'label': 'Apple Inc. (AAPL)', 'value': 'AAPL'},
+        {'label': 'Microsoft Corp. (MSFT)', 'value': 'MSFT'},
+        {'label': 'Alphabet Inc. (GOOGL)', 'value': 'GOOGL'},
+        {'label': 'Amazon.com Inc. (AMZN)', 'value': 'AMZN'},
+        {'label': 'Tesla Inc. (TSLA)', 'value': 'TSLA'},
+        {'label': 'Meta Platforms Inc. (META)', 'value': 'META'},
+        {'label': 'NVIDIA Corporation (NVDA)', 'value': 'NVDA'},
+        {'label': 'Berkshire Hathaway Inc. (BRK-A)', 'value': 'BRK-A'},
+        {'label': 'JPMorgan Chase & Co. (JPM)', 'value': 'JPM'},
+        {'label': 'UnitedHealth Group Incorporated (UNH)', 'value': 'UNH'},
+        {'label': 'Visa Inc. (V)', 'value': 'V'},
+        {'label': 'Mastercard Inc. (MA)', 'value': 'MA'},
+        {'label': 'The Walt Disney Company (DIS)', 'value': 'DIS'},
+        {'label': 'Pfizer Inc. (PFE)', 'value': 'PFE'},
+        {'label': 'The Coca-Cola Company (KO)', 'value': 'KO'},
+        {'label': 'Cisco Systems Inc. (CSCO)', 'value': 'CSCO'},
+        {'label': 'Adobe Inc. (ADBE)', 'value': 'ADBE'},
+        {'label': 'Netflix Inc. (NFLX)', 'value': 'NFLX'},
+        {'label': 'Intel Corporation (INTC)', 'value': 'INTC'},
+        {'label': 'Walmart Inc. (WMT)', 'value': 'WMT'},
+        {'label': 'Exxon Mobil Corporation (XOM)', 'value': 'XOM'},
+        {'label': 'Chevron Corporation (CVX)', 'value': 'CVX'},
+        {'label': 'Boeing Co. (BA)', 'value': 'BA'},
+        {'label': 'IBM (International Business Machines Corp.) (IBM)', 'value': 'IBM'},
+        {'label': 'AT&T Inc. (T)', 'value': 'T'},
+        {'label': 'McDonald\'s Corp. (MCD)', 'value': 'MCD'},
+        {'label': 'Nike Inc. (NKE)', 'value': 'NKE'},
+        {'label': 'Texas Instruments Inc. (TXN)', 'value': 'TXN'},
+        {'label': 'Goldman Sachs Group Inc. (GS)', 'value': 'GS'},
+        {'label': 'Caterpillar Inc. (CAT)', 'value': 'CAT'},
+        {'label': 'Home Depot Inc. (HD)', 'value': 'HD'},
+        {'label': 'CVS Health Corporation (CVS)', 'value': 'CVS'},
+        {'label': 'United Parcel Service Inc. (UPS)', 'value': 'UPS'},
+        {'label': 'Lockheed Martin Corporation (LMT)', 'value': 'LMT'},
+        {'label': 'Honda Motor Co., Ltd. (HMC)', 'value': 'HMC'},
+        {'label': 'Oracle Corporation (ORCL)', 'value': 'ORCL'},
+        {'label': 'Bristol-Myers Squibb Company (BMY)', 'value': 'BMY'},
+        {'label': 'Salesforce.com Inc. (CRM)', 'value': 'CRM'},
+        {'label': 'PayPal Holdings Inc. (PYPL)', 'value': 'PYPL'},
+        {'label': 'Square Inc. (SQ)', 'value': 'SQ'},
+        {'label': 'Starbucks Corporation (SBUX)', 'value': 'SBUX'},
+        {'label': 'Uber Technologies Inc. (UBER)', 'value': 'UBER'},
+        {'label': 'Alibaba Group Holding Ltd. (BABA)', 'value': 'BABA'},
+        {'label': 'Tencent Holdings Ltd. (TCEHY)', 'value': 'TCEHY'},
+        {'label': 'Baidu Inc. (BIDU)', 'value': 'BIDU'},
+        {'label': 'NIO Inc. (NIO)', 'value': 'NIO'},
+        {'label': 'JD.com Inc. (JD)', 'value': 'JD'},
+        {'label': 'Moderna Inc. (MRNA)', 'value': 'MRNA'}
+    ],
+        value=['AAPL', 'MSFT'],  # Default selected values
+        multi=True
     ),
 
     html.Label('Risk-Free Rate'),
@@ -75,8 +130,10 @@ app.layout = html.Div(children=[
         marks={i / 100: f'{i}%' for i in range(0, 11)}
     ),
 
-    dcc.Graph(id='efficient-frontier'),
-    dcc.Graph(id='cumulative-returns'),
+    html.Div([
+        dcc.Graph(id='efficient-frontier'),
+        dcc.Graph(id='backtest-comparison')
+    ], style={'display': 'flex', 'flex-direction': 'row'}),
 
     html.Div(id='portfolio-weights')
 ])
@@ -84,15 +141,23 @@ app.layout = html.Div(children=[
 # Define callback to update the graphs and weights based on user input
 @app.callback(
     [Output('efficient-frontier', 'figure'),
-     Output('cumulative-returns', 'figure'),
+     Output('backtest-comparison', 'figure'),
      Output('portfolio-weights', 'children')],
     [Input('stock-dropdown', 'value'),
-     Input('risk-free-rate-slider', 'value')]
+     Input('risk-free-rate-slider', 'value'),
+     Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date')]
 )
-def update_graphs(selected_stocks, risk_free_rate):
+def update_graphs(selected_stocks, risk_free_rate, start_date, end_date):
     # Load stock data
-    tickers = selected_stocks.split()
-    stock_data, daily_returns = load_stock_data(tickers, '2018-07-12', '2024-07-12')
+    tickers = selected_stocks
+    start_date = pd.to_datetime(start_date).strftime('%Y-%m-%d')
+    end_date = pd.to_datetime(end_date).strftime('%Y-%m-%d')
+    stock_data, daily_returns = load_stock_data(tickers, start_date, end_date)
+
+    # Check for empty data
+    if daily_returns.empty:
+        return {}, {}, "No data available for the selected date range."
 
     # Generate random portfolios
     num_portfolios = 10000
@@ -103,104 +168,127 @@ def update_graphs(selected_stocks, risk_free_rate):
         weights = np.random.random(len(stock_data.columns))
         weights /= np.sum(weights)  # Normalize weights
         weights_record.append(weights)
-        portfolio_return, portfolio_volatility = portfolio_performance(weights, daily_returns)
-        results[0, i] = portfolio_return
-        results[1, i] = portfolio_volatility
-        results[2, i] = (portfolio_return - risk_free_rate) / portfolio_volatility  # Sharpe ratio
+        try:
+            portfolio_return, portfolio_volatility = portfolio_performance(weights, daily_returns)
+            results[0, i] = portfolio_return
+            results[1, i] = portfolio_volatility
+            results[2, i] = (portfolio_return - risk_free_rate) / portfolio_volatility  # Sharpe ratio
+        except (ZeroDivisionError, ValueError) as e:
+            print(f"Error in portfolio calculation: {e}")
+            continue
 
     results_df = pd.DataFrame(results.T, columns=['Return', 'Volatility', 'Sharpe Ratio'])
 
+    # Debugging print statements
+    # print(results_df.head())
+    # print(results_df.describe())
+    
+    # Check for NaN values
+    if results_df['Sharpe Ratio'].isna().all():
+        return {}, {}, "No valid Sharpe Ratio found."
+
     # Identify the portfolio with the maximum Sharpe ratio
-    max_sharpe_idx = results_df['Sharpe Ratio'].idxmax()
-    max_sharpe_portfolio = results_df.loc[max_sharpe_idx]
-    max_sharpe_weights = weights_record[max_sharpe_idx]
+    try:
+        max_sharpe_idx = results_df['Sharpe Ratio'].idxmax()
+        max_sharpe_portfolio = results_df.loc[max_sharpe_idx]
+        max_sharpe_weights = weights_record[max_sharpe_idx]
+    except ValueError as e:
+        print(f"Error finding max Sharpe index: {e}")
+        return {}, {}, "Error in Sharpe Ratio calculation."
 
     # Identify the portfolio with the minimum volatility
-    min_volatility_idx = results_df['Volatility'].idxmin()
-    min_volatility_portfolio = results_df.loc[min_volatility_idx]
-    min_volatility_weights = weights_record[min_volatility_idx]
+    try:
+        min_vol_idx = results_df['Volatility'].idxmin()
+        min_vol_portfolio = results_df.loc[min_vol_idx]
+        min_vol_weights = weights_record[min_vol_idx]
+    except ValueError as e:
+        print(f"Error finding min volatility index: {e}")
+        return {}, {}, "Error in volatility calculation."
 
-    # Calculate historical returns for the optimal portfolios
+    # Calculate cumulative returns for the portfolios
+    min_vol_returns = calculate_portfolio_returns(min_vol_weights, daily_returns)
     max_sharpe_returns = calculate_portfolio_returns(max_sharpe_weights, daily_returns)
-    min_volatility_returns = calculate_portfolio_returns(min_volatility_weights, daily_returns)
+    
+    cumulative_min_vol_returns = (1 + min_vol_returns).cumprod() * 1000 # Start with an initial investment of $1000
+    cumulative_max_sharpe_returns = (1 + max_sharpe_returns).cumprod() * 1000
+    
+    # Create the comparison graph
+    backtest_comparison = go.Figure()
+    backtest_comparison.add_trace(go.Scatter(
+        x=cumulative_min_vol_returns.index,
+        y=cumulative_min_vol_returns,
+        mode='lines',
+        name='Min Volatility Portfolio'
+    ))
+    backtest_comparison.add_trace(go.Scatter(
+        x=cumulative_max_sharpe_returns.index,
+        y=cumulative_max_sharpe_returns,
+        mode='lines',
+        name='Max Sharpe Ratio Portfolio'
+    ))
+    backtest_comparison.update_layout(
+        title='Backtest Comparison of Portfolio Values',
+        xaxis_title='Date',
+        yaxis_title='Cumulative Return'
+    )
 
-    cumulative_max_sharpe_returns = (1 + max_sharpe_returns).cumprod()
-    cumulative_min_volatility_returns = (1 + min_volatility_returns).cumprod()
+    # Create efficient frontier graph
+    fig_efficient_frontier = go.Figure()
+    fig_efficient_frontier.add_trace(go.Scatter(
+        x=results_df['Volatility'],
+        y=results_df['Return'],
+        mode='markers',
+        marker=dict(color=results_df['Sharpe Ratio'], colorscale='Viridis', showscale=True),
+        text=[f'Sharpe: {sharpe:.2f}' for sharpe in results_df['Sharpe Ratio']],
+        showlegend=False
+    ))
 
-    # Efficient Frontier Plot
-    efficient_frontier_figure = {
-        'data': [
-            go.Scatter(
-                x=results_df['Volatility'],
-                y=results_df['Return'],
-                mode='markers',
-                marker=dict(
-                    size=5,
-                    color=results_df['Sharpe Ratio'],
-                    colorscale='Viridis',
-                    showscale=True,
-                    colorbar=dict(title='Sharpe Ratio')
-                ),
-                name='Portfolios'
-            ),
-            go.Scatter(
-                x=[max_sharpe_portfolio['Volatility']],
-                y=[max_sharpe_portfolio['Return']],
-                mode='markers',
-                marker=dict(color='red', size=10, symbol='star'),
-                name='Max Sharpe Ratio'
-            ),
-            go.Scatter(
-                x=[min_volatility_portfolio['Volatility']],
-                y=[min_volatility_portfolio['Return']],
-                mode='markers',
-                marker=dict(color='blue', size=10, symbol='star'),
-                name='Min Volatility'
-            )
-        ],
-        'layout': go.Layout(
-            title='Efficient Frontier',
-            xaxis=dict(title='Volatility (Risk)'),
-            yaxis=dict(title='Return'),
-            hovermode='closest'
-        )
+    # Add markers for Min Volatility and Max Sharpe Ratio portfolios
+    fig_efficient_frontier.add_trace(go.Scatter(
+        x=[min_vol_portfolio['Volatility']],
+        y=[min_vol_portfolio['Return']],
+        mode='markers',
+        marker=dict(color='red', size=10, symbol='x'),
+        name='Min Volatility Portfolio',
+        showlegend=False
+    ))
+    
+    fig_efficient_frontier.add_trace(go.Scatter(
+        x=[max_sharpe_portfolio['Volatility']],
+        y=[max_sharpe_portfolio['Return']],
+        mode='markers',
+        marker=dict(color='blue', size=10, symbol='circle'),
+        name='Max Sharpe Ratio Portfolio',
+        showlegend=False
+    ))
+
+    fig_efficient_frontier.update_layout(
+        title='Efficient Frontier',
+        xaxis_title='Volatility',
+        yaxis_title='Return'
+    )
+
+    # Create table data
+    table_data = {
+        'Stock': tickers,
+        'Min Volatility': min_vol_weights,
+        'Max Sharpe Ratio': max_sharpe_weights
     }
+    
+    # Convert to DataFrame for display
+    table_df = pd.DataFrame(table_data)
+    
+    # Create the table component
+    table = dash_table.DataTable(
+        id='portfolio-table',
+        columns=[{'name': i, 'id': i} for i in table_df.columns],
+        data=table_df.to_dict('records'),
+        style_table={'overflowX': 'auto'},
+        style_cell={'textAlign': 'left'}
+    )
 
-    # Cumulative Returns Plot
-    cumulative_returns_figure = {
-        'data': [
-            go.Scatter(
-                x=cumulative_max_sharpe_returns.index,
-                y=cumulative_max_sharpe_returns,
-                mode='lines',
-                name='Max Sharpe Ratio Portfolio'
-            ),
-            go.Scatter(
-                x=cumulative_min_volatility_returns.index,
-                y=cumulative_min_volatility_returns,
-                mode='lines',
-                name='Min Volatility Portfolio'
-            )
-        ],
-        'layout': go.Layout(
-            title='Cumulative Returns of Optimal Portfolios',
-            xaxis=dict(title='Date'),
-            yaxis=dict(title='Cumulative Return')
-        )
-    }
+    return fig_efficient_frontier, backtest_comparison, table
 
-    # Display Portfolio Weights
-    weights_table = html.Table([
-        html.Thead(html.Tr([html.Th("Stock"), html.Th("Max Sharpe Ratio Weights"), html.Th("Min Volatility Weights")])),
-        html.Tbody([
-            html.Tr([html.Td(stock), html.Td(f"{weight:.2%}"), html.Td(f"{min_volatility_weights[idx]:.2%}")])
-            for idx, (stock, weight) in enumerate(zip(tickers, max_sharpe_weights))
-        ])
-    ])
-
-    return efficient_frontier_figure, cumulative_returns_figure, weights_table
-
-# Run the app
+# Run the app. Use the port 8050
 if __name__ == '__main__':
     app.run_server(debug=True, host='0.0.0.0', port=8050)
-
